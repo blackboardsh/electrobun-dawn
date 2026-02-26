@@ -1,0 +1,9 @@
+{
+  "name": "electrobun-dawn",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:release": "node scripts/build-dawn.js",
+    "package": "node scripts/package-binaries.js"
+  }
+}

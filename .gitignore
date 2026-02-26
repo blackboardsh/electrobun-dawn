@@ -1,1 +1,7 @@
-# Add files to ignore here
+# Build output
+out/
+# Installed artifacts
+/dist/
+
+# Editor
+.DS_Store
