@@ -1,9 +1,26 @@
 {
   "name": "electrobun-dawn",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Prebuilt Dawn (WebGPU) shared libraries for Electrobun",
+  "license": "MIT",
+  "author": "Blackboard Technologies Inc.",
   "type": "module",
   "scripts": {
     "build:release": "node scripts/build-dawn.js",
-    "package": "node scripts/package-binaries.js"
-  }
+    "package": "node scripts/package-binaries.js",
+    "push:beta": "npm version prerelease --preid=beta && git push origin main --tags",
+    "push:patch": "npm version prepatch --preid=beta && git push origin main --tags",
+    "push:minor": "npm version preminor --preid=beta && git push origin main --tags",
+    "push:major": "npm version premajor --preid=beta && git push origin main --tags",
+    "push:stable": "npm version patch && git push origin main --tags"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
 }
