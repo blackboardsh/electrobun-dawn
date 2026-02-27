@@ -46,6 +46,20 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install Linux deps
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libx11-dev \
+            libx11-xcb-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            mesa-common-dev \
+            pkg-config
+
       - name: Build Dawn
         run: |
           npm run build:release
