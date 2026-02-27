@@ -40,8 +40,9 @@ const deps = [
 const cmakeArgs = [
   '-S', join(root, 'dawn'),
   '-B', outDir,
-  '-G', 'Ninja',
-  '-DCMAKE_BUILD_TYPE=Release',
+  ...(platform === 'win32'
+    ? ['-G', 'Visual Studio 17 2022', '-A', 'x64']
+    : ['-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release']),
   '-DDAWN_FETCH_DEPENDENCIES=ON',
   '-DDAWN_ENABLE_INSTALL=ON',
   '-DDAWN_BUILD_MONOLITHIC_LIBRARY=SHARED',
