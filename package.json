@@ -1,6 +1,6 @@
 {
   "name": "electrobun-dawn",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Prebuilt Dawn (WebGPU) shared libraries for Electrobun",
   "license": "MIT",
   "author": "Blackboard Technologies Inc.",
