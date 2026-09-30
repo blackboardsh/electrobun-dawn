@@ -1,6 +1,8 @@
 name: Build and Release
 
 on:
+  pull_request:
+    branches: [main]
   push:
     tags:
       - 'v*'
@@ -34,6 +36,11 @@ jobs:
           - os: windows-2022
             platform: win32
             arch: x64
+          # Dawn has no Zig compiler dependency; building natively also keeps
+          # DXC's build-time tools executable on the build host.
+          - os: windows-11-arm
+            platform: win32
+            arch: arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -45,7 +52,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
 
       - name: Install Linux deps
         if: startsWith(matrix.os, 'ubuntu')
@@ -69,6 +76,11 @@ jobs:
         run: |
           npm run package
 
+      - name: Exercise Windows library
+        if: matrix.platform == 'win32'
+        shell: pwsh
+        run: ./scripts/test-windows-library.ps1 -Architecture ${{ matrix.arch }}
+
       - name: Create tarball
         shell: bash
         run: |
@@ -82,6 +94,7 @@ jobs:
           path: electrobun-dawn-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
 
   release:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -124,7 +137,7 @@ jobs:
             Pre-built binaries for:
             - **macOS** (arm64 & x64): `electrobun-dawn-darwin-[arch].tar.gz`
             - **Linux** (x64 & arm64): `electrobun-dawn-linux-[arch].tar.gz`
-            - **Windows** (x64): `electrobun-dawn-win32-x64.tar.gz`
+            - **Windows** (x64 & arm64): `electrobun-dawn-win32-[arch].tar.gz`
 
             ## Contents
             Each tarball contains:

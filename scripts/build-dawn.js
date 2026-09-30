@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,10 +9,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const root = resolve(__dirname, '..');
 const platform = process.platform;
-const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
+const arch = process.env.DAWN_TARGET_ARCH || process.arch;
+if (!['arm64', 'x64'].includes(arch)) throw new Error(`Unsupported target architecture: ${arch}`);
+if (platform !== 'win32' && arch !== process.arch) throw new Error('Cross compilation is only configured for Windows');
 
 const platformLabel = platform === 'darwin' ? 'darwin' : platform === 'win32' ? 'win32' : 'linux';
-const outDir = join(root, 'out', 'Release');
+const outDir = join(root, 'out', `${platformLabel}-${arch}`, 'Release');
 const installDir = join(root, 'dist', `${platformLabel}-${arch}`);
 
 const deps = [
@@ -37,11 +39,25 @@ const deps = [
   'third_party/webgpu-headers/src'
 ];
 
+function windowsGenerator() {
+  if (process.env.CMAKE_GENERATOR) return process.env.CMAKE_GENERATOR;
+  const vswhere = [process.env['ProgramFiles(x86)'], process.env.ProgramFiles]
+    .filter(Boolean)
+    .map((directory) => join(directory, 'Microsoft Visual Studio', 'Installer', 'vswhere.exe'))
+    .find(existsSync);
+  if (!vswhere) throw new Error('Visual Studio Installer (vswhere.exe) was not found');
+  const component = arch === 'arm64' ? 'Microsoft.VisualStudio.Component.VC.Tools.ARM64' : 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64';
+  const version = execFileSync(vswhere, ['-latest', '-products', '*', '-requires', component, '-property', 'installationVersion'], { encoding: 'utf8' }).trim();
+  const generator = { 17: 'Visual Studio 17 2022', 18: 'Visual Studio 18 2026' }[version.split('.')[0]];
+  if (!generator) throw new Error(`No supported Visual Studio installation with ${arch} C++ tools (version: ${version || 'missing'})`);
+  return generator;
+}
+
 const cmakeArgs = [
   '-S', join(root, 'dawn'),
   '-B', outDir,
   ...(platform === 'win32'
-    ? ['-G', 'Visual Studio 17 2022', '-A', 'x64']
+    ? ['-G', windowsGenerator(), '-A', arch === 'arm64' ? 'ARM64' : 'x64']
     : ['-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release']),
   '-DDAWN_FETCH_DEPENDENCIES=ON',
   '-DDAWN_ENABLE_INSTALL=ON',
@@ -69,6 +85,6 @@ run('cmake', cmakeArgs);
 run('cmake', ['--build', outDir, '--config', 'Release']);
 
 rmSync(installDir, { recursive: true, force: true });
-run('cmake', ['--install', outDir, '--prefix', installDir]);
+run('cmake', ['--install', outDir, '--config', 'Release', '--prefix', installDir]);
 
 console.log(`Installed Dawn to ${installDir}`);
