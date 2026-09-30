@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { accessSync } from 'node:fs';
+import { accessSync, readFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,7 +9,8 @@ const __dirname = dirname(__filename);
 const root = resolve(__dirname, '..');
 
 const platform = process.platform;
-const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
+const arch = process.env.DAWN_TARGET_ARCH || process.arch;
+if (!['arm64', 'x64'].includes(arch)) throw new Error(`Unsupported target architecture: ${arch}`);
 const platformLabel = platform === 'darwin' ? 'darwin' : platform === 'win32' ? 'win32' : 'linux';
 
 const installDir = join(root, 'dist', `${platformLabel}-${arch}`);
@@ -49,4 +50,11 @@ if (!libPath) {
 }
 
 console.log(`Found Dawn library: ${libPath}`);
+if (platformLabel === 'win32') {
+  const binary = readFileSync(libPath);
+  const pe = binary.readUInt32LE(0x3c);
+  if (binary.readUInt32LE(pe) !== 0x4550 || binary.readUInt16LE(pe + 4) !== { arm64: 0xaa64, x64: 0x8664 }[arch]) {
+    throw new Error(`Dawn library does not contain a ${arch} PE image: ${libPath}`);
+  }
+}
 console.log('Package validation succeeded.');
