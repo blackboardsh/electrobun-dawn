@@ -59,6 +59,7 @@ const cmakeArgs = [
   ...(platform === 'win32'
     ? ['-G', windowsGenerator(), '-A', arch === 'arm64' ? 'ARM64' : 'x64']
     : ['-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release']),
+  ...(platform === 'darwin' ? ['-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0'] : []),
   '-DDAWN_FETCH_DEPENDENCIES=ON',
   '-DDAWN_ENABLE_INSTALL=ON',
   '-DDAWN_BUILD_MONOLITHIC_LIBRARY=SHARED',

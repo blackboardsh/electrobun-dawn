@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { accessSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,6 +51,32 @@ if (!libPath) {
 }
 
 console.log(`Found Dawn library: ${libPath}`);
+if (platformLabel === 'darwin') {
+  const architecture = execFileSync('lipo', ['-archs', libPath], { encoding: 'utf8' }).trim();
+  const expected = { arm64: 'arm64', x64: 'x86_64' }[arch];
+  if (architecture !== expected) {
+    throw new Error(`Expected a ${expected} Dawn library, got ${architecture}`);
+  }
+  const loadCommands = execFileSync('otool', ['-l', libPath], { encoding: 'utf8' });
+  const minimumVersion = loadCommands.match(/\bminos\s+(\d+(?:\.\d+){0,2})/)
+    ?? loadCommands.match(/LC_VERSION_MIN_MACOSX\s+cmdsize\s+\d+\s+version\s+(\d+(?:\.\d+){0,2})/);
+  const [major, minor = 0, patch = 0] = (minimumVersion?.[1] ?? '').split('.').map(Number);
+  if (!minimumVersion || major > 14 || (major === 14 && (minor > 0 || patch > 0))) {
+    throw new Error(`Dawn requires macOS ${minimumVersion?.[1] ?? 'unknown'}; the supported baseline is 14.0`);
+  }
+  const libraries = execFileSync('otool', ['-L', libPath], { encoding: 'utf8' })
+    .trim().split('\n').slice(1).map((line) => line.trim().split(' (')[0]);
+  // The first entry is the dylib's own install name, followed by dependencies.
+  if (!/^@rpath\/libwebgpu_dawn(?:_shared)?\.dylib$/.test(libraries[0])) {
+    throw new Error(`Dawn has a non-relocatable install name: ${libraries[0]}`);
+  }
+  const nonSystemLibraries = libraries.slice(1).filter((library) =>
+    !library.startsWith('/System/Library/') && !library.startsWith('/usr/lib/'));
+  if (nonSystemLibraries.length) {
+    throw new Error(`Dawn depends on non-system libraries: ${nonSystemLibraries.join(', ')}`);
+  }
+  console.log(`Validated ${architecture}, macOS ${minimumVersion[1]}, and system-only dependencies`);
+}
 if (platformLabel === 'win32') {
   const binary = readFileSync(libPath);
   const pe = binary.readUInt32LE(0x3c);

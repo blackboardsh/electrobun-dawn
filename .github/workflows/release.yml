@@ -81,6 +81,10 @@ jobs:
         shell: pwsh
         run: ./scripts/test-windows-library.ps1 -Architecture ${{ matrix.arch }}
 
+      - name: Exercise macOS library
+        if: matrix.platform == 'darwin'
+        run: node scripts/test-macos-library.js
+
       - name: Create tarball
         shell: bash
         run: |

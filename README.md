@@ -21,6 +21,11 @@ Build directories are separate for each target. Windows ARM64 CI builds
 natively, validates the DLL architecture, and creates/releases a WebGPU
 instance through the packaged library before publishing.
 
+macOS supports Intel and Apple Silicon on macOS 14 or newer. CI validates the
+packaged library's architecture, deployment target, and system dependencies,
+then compiles and runs a native WebGPU instance smoke test on both architectures.
+Run that test locally after building with `node scripts/test-macos-library.js`.
+
 ## Release
 
 Tag a release (or use the workflow dispatch) to publish per-platform tarballs.
